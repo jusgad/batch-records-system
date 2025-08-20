@@ -1,0 +1,33 @@
+{
+  "name": "batch-records-system",
+  "version": "1.0.0",
+  "description": "Sistema de gestión de registros de batch con firmas digitales y gestión de usuarios",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "cd backend && npm start",
+    "dev": "cd backend && npm run dev",
+    "init": "node init.js",
+    "setup": "npm run init && cd backend && npm install",
+    "test": "cd backend && npm test"
+  },
+  "keywords": [
+    "batch",
+    "records",
+    "manufacturing",
+    "digital-signatures",
+    "user-management",
+    "audit-trail"
+  ],
+  "author": "Batch Records System",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/usuario/batch-records-system.git"
+  },
+  "devDependencies": {
+    "sqlite3": "^5.1.6"
+  }
+}

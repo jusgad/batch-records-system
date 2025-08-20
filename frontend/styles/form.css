@@ -1,0 +1,637 @@
+/* Form styles for batch records */
+.batch-form {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow: hidden;
+}
+
+.form-header {
+    background: var(--light-color);
+    border-bottom: 1px solid #dee2e6;
+    padding: var(--spacing-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.form-controls {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.form-controls .btn {
+    font-size: var(--font-size-sm);
+}
+
+/* Form tabs */
+.form-tabs {
+    border-bottom: 1px solid #dee2e6;
+}
+
+.nav-tabs {
+    display: flex;
+    background: var(--light-color);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.nav-tab {
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: #e9ecef;
+    border-right: 1px solid #dee2e6;
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+.nav-tab:hover {
+    background: #d1ecf1;
+}
+
+.nav-tab.active {
+    background: white;
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
+    margin-bottom: -1px;
+}
+
+.nav-tab:last-child {
+    border-right: none;
+}
+
+/* Form sections */
+.batch-record-form {
+    padding: 0;
+}
+
+.form-section {
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.form-section:last-child {
+    border-bottom: none;
+}
+
+.form-section h3,
+.form-section h4 {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 2px solid var(--light-color);
+}
+
+.basic-info {
+    background: rgba(0, 123, 255, 0.05);
+    border-left: 4px solid var(--primary-color);
+}
+
+.basic-info h3 {
+    color: var(--primary-color);
+    margin-bottom: var(--spacing-md);
+}
+
+/* Tab content */
+.tab-content {
+    position: relative;
+    min-height: 400px;
+}
+
+.tab-pane {
+    display: none;
+    animation: fadeInUp 0.4s ease-out;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Form rows and groups */
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-right: -5px;
+    margin-left: -5px;
+}
+
+.form-group {
+    margin-bottom: var(--spacing-md);
+}
+
+.form-row .form-group {
+    padding-right: 5px;
+    padding-left: 5px;
+}
+
+.col-md-3 { flex: 0 0 25%; max-width: 25%; }
+.col-md-4 { flex: 0 0 33.333333%; max-width: 33.333333%; }
+.col-md-6 { flex: 0 0 50%; max-width: 50%; }
+.col-md-8 { flex: 0 0 66.666667%; max-width: 66.666667%; }
+
+/* Form controls specific to batch records */
+.form-control-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    border-radius: 0.2rem;
+    min-height: auto;
+}
+
+/* Tables */
+.table-responsive {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-bordered {
+    border: 1px solid #dee2e6;
+}
+
+.table-bordered th,
+.table-bordered td {
+    border: 1px solid #dee2e6;
+}
+
+.table th {
+    background-color: var(--light-color);
+    font-weight: 600;
+    text-align: center;
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-sm);
+}
+
+.table td {
+    padding: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    vertical-align: middle;
+}
+
+.table td input {
+    border: none;
+    background: transparent;
+    width: 100%;
+    min-width: 60px;
+    text-align: center;
+    padding: 2px 4px;
+}
+
+.table td input:focus {
+    background: white;
+    border: 1px solid var(--primary-color);
+    border-radius: 2px;
+}
+
+/* Ingredients table */
+.ingredients-table {
+    margin: var(--spacing-md) 0;
+}
+
+.ingredients-table .table {
+    font-size: 0.7rem;
+}
+
+.ingredients-table td:nth-child(1),
+.ingredients-table td:nth-child(2) {
+    text-align: left;
+    font-weight: 500;
+}
+
+.ingredients-table td:nth-child(3),
+.ingredients-table td:nth-child(4),
+.ingredients-table td:nth-child(5) {
+    background: rgba(0, 123, 255, 0.05);
+    font-weight: 600;
+}
+
+/* Protocol steps */
+.protocol-steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.protocol-step {
+    display: flex;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--light-color);
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--primary-color);
+}
+
+.step-number {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+}
+
+.step-description {
+    flex: 1;
+    padding-right: var(--spacing-md);
+    font-size: var(--font-size-sm);
+    line-height: 1.4;
+}
+
+.step-controls {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    min-width: 150px;
+}
+
+.step-controls input {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Quality control specific */
+.quality-control-section .table th {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    height: 80px;
+    min-width: 40px;
+}
+
+/* Retention samples section */
+.retention-samples {
+    background: rgba(40, 167, 69, 0.05) !important;
+    vertical-align: top !important;
+    padding: var(--spacing-sm) !important;
+}
+
+.retention-samples .form-group {
+    margin-bottom: var(--spacing-xs);
+}
+
+.retention-samples label {
+    font-size: 0.7rem;
+    margin-bottom: 2px;
+    font-weight: 600;
+}
+
+/* Liberation section */
+.liberation-section {
+    background: rgba(40, 167, 69, 0.05);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(40, 167, 69, 0.2);
+}
+
+/* Labels area */
+.labels-area textarea {
+    min-height: 400px;
+    font-family: monospace;
+    font-size: var(--font-size-sm);
+    border: 2px solid #dee2e6;
+    border-radius: var(--border-radius);
+}
+
+/* Sublot checkboxes */
+.sublot-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.checkbox-inline {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    margin-bottom: 0;
+}
+
+.checkbox-inline input[type="checkbox"] {
+    margin: 0;
+}
+
+/* Form validation */
+.form-control.error {
+    border-color: var(--danger-color);
+    background-color: rgba(220, 53, 69, 0.05);
+}
+
+.form-control.error:focus {
+    border-color: var(--danger-color);
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+.field-error {
+    color: var(--danger-color);
+    font-size: var(--font-size-sm);
+    margin-top: var(--spacing-xs);
+}
+
+/* Required field indicators */
+.form-group label[data-required]::after,
+label:has(+ input[required])::after,
+label:has(+ select[required])::after,
+label:has(+ textarea[required])::after {
+    content: " *";
+    color: var(--danger-color);
+    font-weight: 600;
+}
+
+/* Print styles for forms */
+@media print {
+    .form-header,
+    .nav-tabs,
+    .form-controls {
+        display: none !important;
+    }
+    
+    .tab-pane {
+        display: block !important;
+    }
+    
+    .batch-form {
+        box-shadow: none !important;
+        border: 1px solid #000;
+    }
+    
+    .form-section {
+        page-break-inside: avoid;
+        border-bottom: 1px solid #000;
+    }
+    
+    .table {
+        font-size: 8pt;
+    }
+    
+    .table th,
+    .table td {
+        padding: 2px 4px;
+        border: 1px solid #000;
+    }
+    
+    .table td input {
+        border: none !important;
+        background: transparent !important;
+    }
+    
+    .protocol-step {
+        border: 1px solid #000;
+        margin-bottom: var(--spacing-sm);
+        page-break-inside: avoid;
+    }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .form-controls {
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+    
+    .form-controls .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .nav-tabs {
+        flex-wrap: wrap;
+    }
+    
+    .nav-tab {
+        flex: 1;
+        text-align: center;
+        min-width: 120px;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        margin: 0;
+    }
+    
+    .form-row .form-group {
+        padding: 0;
+        max-width: 100%;
+        flex: none;
+    }
+    
+    .col-md-3,
+    .col-md-4,
+    .col-md-6,
+    .col-md-8 {
+        flex: none;
+        max-width: 100%;
+    }
+    
+    .protocol-step {
+        flex-direction: column;
+    }
+    
+    .step-controls {
+        min-width: auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    
+    .table-responsive {
+        font-size: 0.7rem;
+    }
+    
+    .retention-samples {
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .form-section {
+        padding: var(--spacing-sm);
+    }
+    
+    .nav-tab {
+        padding: var(--spacing-sm);
+        font-size: 0.7rem;
+        min-width: 80px;
+    }
+    
+    .table {
+        font-size: 0.6rem;
+    }
+    
+    .table th,
+    .table td {
+        padding: 1px 2px;
+    }
+    
+    .protocol-step {
+        padding: var(--spacing-sm);
+    }
+    
+    .step-number {
+        width: 24px;
+        height: 24px;
+        font-size: 0.7rem;
+    }
+    
+    .step-description {
+        font-size: 0.7rem;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .batch-form,
+    .form-section,
+    .protocol-step {
+        background-color: var(--light-color);
+    }
+    
+    .basic-info {
+        background: rgba(0, 123, 255, 0.1);
+    }
+    
+    .liberation-section {
+        background: rgba(40, 167, 69, 0.1);
+    }
+    
+    .table th {
+        background-color: #2d3748;
+    }
+    
+    .table td input {
+        color: var(--dark-color);
+    }
+    
+    .table td input:focus {
+        background: var(--light-color);
+    }
+    
+    .labels-area textarea {
+        background-color: var(--light-color);
+        color: var(--dark-color);
+        border-color: #4a5568;
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .table th,
+    .table td {
+        border: 2px solid var(--dark-color);
+    }
+    
+    .nav-tab.active {
+        border-bottom: 3px solid var(--primary-color);
+    }
+    
+    .protocol-step {
+        border-left: 6px solid var(--primary-color);
+    }
+    
+    .form-control:focus {
+        border: 2px solid var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.5);
+    }
+}
+
+/* Animation for tab switching */
+.tab-switching .tab-pane {
+    transition: opacity 0.3s ease-in-out;
+}
+
+.tab-switching .tab-pane:not(.active) {
+    opacity: 0;
+}
+
+.tab-switching .tab-pane.active {
+    opacity: 1;
+}
+
+/* Form progress indicator */
+.form-progress {
+    height: 4px;
+    background: #e9ecef;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: var(--spacing-md);
+}
+
+.form-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+    transition: width 0.3s ease;
+    border-radius: 2px;
+}
+
+/* Signature area */
+.signature-area {
+    border: 2px dashed #dee2e6;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--secondary-color);
+    font-style: italic;
+    margin: var(--spacing-sm) 0;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+
+.signature-area:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.signature-area.signed {
+    background: rgba(40, 167, 69, 0.1);
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+
+/* Auto-save indicator */
+.auto-save-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: 20px;
+    font-size: var(--font-size-sm);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1000;
+}
+
+.auto-save-indicator.show {
+    opacity: 1;
+}
+
+.auto-save-indicator.saving {
+    background: var(--warning-color);
+    color: var(--dark-color);
+}
+
+.auto-save-indicator.saved {
+    background: var(--success-color);
+}
