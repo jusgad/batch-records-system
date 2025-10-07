@@ -1,15 +1,49 @@
-# Sistema de Batch Records
+# 📋 Sistema de Gestión de Batch Records v2.0
 
-Un sistema completo de gestión de registros de batch para manufactura con firmas digitales, gestión de usuarios, roles y auditoría.
+## 🎯 Descripción
 
-## 🚀 Características Principales
+Sistema completo de gestión de registros de batch para manufactura farmacéutica y cosmética, con cálculos automáticos, control de stock, firmas digitales, y auditoría completa.
 
-- **Gestión de Usuarios y Roles**: Soporte completo para Administrador, Operador y Verificador
-- **Firmas Digitales**: Sistema de firmas criptográficas para garantizar la integridad
-- **Auditoría Completa**: Rastro de auditoría de todas las acciones importantes
-- **Interfaz Responsiva**: Diseño adaptable para escritorio, tablet y móvil
-- **Formularios Complejos**: Formularios multi-página basados en el sistema MARIPOSA
-- **Seguridad Avanzada**: Autenticación JWT, rate limiting, y validación de sesiones
+Desarrollado basándose en el repositorio [jusgad/batch](https://github.com/jusgad/batch) para implementar funcionalidades profesionales de gestión de producción.
+
+## ✨ Características Principales
+
+- ✅ **Gestión Completa de Productos y Formulaciones**
+  - Productos con formulaciones predefinidas
+  - Cálculo automático de materias primas
+  - Validación de porcentajes (100%)
+  - Alertas de stock insuficiente
+
+- ✅ **Sistema de Batch Records**
+  - Formularios dinámicos basados en producto
+  - Cálculos automáticos de cantidades teóricas
+  - Registro de cantidades reales dispensadas
+  - Seguimiento de lotes de materias primas
+
+- ✅ **Control de Inventario**
+  - Gestión de materias primas
+  - Materiales de empaque
+  - Movimientos de stock automáticos
+  - Alertas de stock mínimo
+
+- ✅ **Seguridad y Roles**
+  - **Admin**: Gestión completa del sistema
+  - **Operator**: Creación y firma de batch records
+  - **Verificador**: Verificación y aprobación de records
+  - Autenticación JWT
+  - Firmas digitales RSA
+
+- ✅ **Auditoría Completa**
+  - Registro de todas las acciones
+  - Trazabilidad completa
+  - Historial de cambios
+  - IP y User Agent tracking
+
+- ✅ **Cálculos Automáticos**
+  - Materias primas según formulación
+  - Materiales de empaque
+  - Tiempos de producción
+  - Totales y validaciones
 
 ## 🏗️ Arquitectura del Sistema
 

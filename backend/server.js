@@ -508,6 +508,475 @@ app.post('/api/records/:id/verify', authenticateToken, authorizeRole(['verificad
     );
 });
 
+// Products routes
+app.get('/api/products', authenticateToken, (req, res) => {
+    db.all(
+        `SELECT p.*, u.full_name as created_by_name
+         FROM products p
+         LEFT JOIN users u ON p.created_by = u.id
+         WHERE p.is_active = 1
+         ORDER BY p.name`,
+        (err, products) => {
+            if (err) {
+                return res.status(500).json({ error: 'Server error' });
+            }
+            res.json(products);
+        }
+    );
+});
+
+app.get('/api/products/:id', authenticateToken, (req, res) => {
+    db.get(
+        'SELECT * FROM products WHERE id = ? AND is_active = 1',
+        [req.params.id],
+        (err, product) => {
+            if (err) {
+                return res.status(500).json({ error: 'Server error' });
+            }
+            if (!product) {
+                return res.status(404).json({ error: 'Product not found' });
+            }
+            res.json(product);
+        }
+    );
+});
+
+app.get('/api/products/:id/formulation', authenticateToken, (req, res) => {
+    db.all(
+        `SELECT pf.*, rm.code as rm_code, rm.name as rm_name, rm.unit as rm_unit, rm.stock as rm_stock
+         FROM product_formulation pf
+         JOIN raw_materials rm ON pf.raw_material_id = rm.id
+         WHERE pf.product_id = ?
+         ORDER BY pf.item_number`,
+        [req.params.id],
+        (err, formulation) => {
+            if (err) {
+                return res.status(500).json({ error: 'Server error' });
+            }
+            res.json(formulation);
+        }
+    );
+});
+
+app.post('/api/products', authenticateToken, authorizeRole(['admin']), (req, res) => {
+    const { code, name, presentation, description, unit } = req.body;
+
+    if (!code || !name || !unit) {
+        return res.status(400).json({ error: 'Code, name, and unit are required' });
+    }
+
+    db.run(
+        'INSERT INTO products (code, name, presentation, description, unit, created_by) VALUES (?, ?, ?, ?, ?, ?)',
+        [code, name, presentation, description, unit, req.user.id],
+        function(err) {
+            if (err) {
+                if (err.code === 'SQLITE_CONSTRAINT') {
+                    return res.status(409).json({ error: 'Product code already exists' });
+                }
+                return res.status(500).json({ error: 'Server error' });
+            }
+
+            logAudit(req.user.id, null, 'product_created', { productId: this.lastID, code, name }, req);
+            res.status(201).json({ id: this.lastID, code, name, presentation, unit });
+        }
+    );
+});
+
+// Raw materials routes
+app.get('/api/raw-materials', authenticateToken, (req, res) => {
+    db.all(
+        'SELECT * FROM raw_materials WHERE is_active = 1 ORDER BY name',
+        (err, materials) => {
+            if (err) {
+                return res.status(500).json({ error: 'Server error' });
+            }
+            res.json(materials);
+        }
+    );
+});
+
+app.post('/api/raw-materials', authenticateToken, authorizeRole(['admin']), (req, res) => {
+    const { code, name, unit, stock, min_stock, max_stock, unit_price, supplier } = req.body;
+
+    if (!code || !name || !unit) {
+        return res.status(400).json({ error: 'Code, name, and unit are required' });
+    }
+
+    db.run(
+        'INSERT INTO raw_materials (code, name, unit, stock, min_stock, max_stock, unit_price, supplier, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [code, name, unit, stock || 0, min_stock || 0, max_stock || 0, unit_price || 0, supplier, req.user.id],
+        function(err) {
+            if (err) {
+                if (err.code === 'SQLITE_CONSTRAINT') {
+                    return res.status(409).json({ error: 'Raw material code already exists' });
+                }
+                return res.status(500).json({ error: 'Server error' });
+            }
+
+            logAudit(req.user.id, null, 'raw_material_created', { materialId: this.lastID, code, name }, req);
+            res.status(201).json({ id: this.lastID, code, name, unit });
+        }
+    );
+});
+
+// Packaging materials routes
+app.get('/api/packaging-materials', authenticateToken, (req, res) => {
+    db.all(
+        'SELECT * FROM packaging_materials WHERE is_active = 1 ORDER BY type, name',
+        (err, materials) => {
+            if (err) {
+                return res.status(500).json({ error: 'Server error' });
+            }
+            res.json(materials);
+        }
+    );
+});
+
+// Calculate batch materials
+app.post('/api/batch/calculate', authenticateToken, authorizeRole(['operator', 'admin']), (req, res) => {
+    const { productId, quantity } = req.body;
+
+    if (!productId || !quantity) {
+        return res.status(400).json({ error: 'Product ID and quantity are required' });
+    }
+
+    // Get product formulation
+    db.all(
+        `SELECT pf.*, rm.name as rm_name, rm.unit as rm_unit, rm.stock as rm_stock
+         FROM product_formulation pf
+         JOIN raw_materials rm ON pf.raw_material_id = rm.id
+         WHERE pf.product_id = ?
+         ORDER BY pf.item_number`,
+        [productId],
+        (err, formulation) => {
+            if (err) {
+                return res.status(500).json({ error: 'Server error' });
+            }
+
+            if (!formulation || formulation.length === 0) {
+                return res.status(404).json({ error: 'Product formulation not found' });
+            }
+
+            // Calculate theoretical quantities
+            const calculations = formulation.map(item => {
+                const theoreticalQuantity = (quantity * item.percentage) / 100;
+                const stockSufficient = item.rm_stock >= theoreticalQuantity;
+
+                return {
+                    item_number: item.item_number,
+                    raw_material_id: item.raw_material_id,
+                    raw_material_name: item.rm_name,
+                    percentage: item.percentage,
+                    unit: item.rm_unit,
+                    theoretical_quantity: parseFloat(theoreticalQuantity.toFixed(3)),
+                    current_stock: item.rm_stock,
+                    stock_sufficient: stockSufficient
+                };
+            });
+
+            // Calculate totals
+            const totalPercentage = formulation.reduce((sum, item) => sum + parseFloat(item.percentage), 0);
+            const totalTheoretical = calculations.reduce((sum, item) => sum + item.theoretical_quantity, 0);
+
+            res.json({
+                product_id: productId,
+                quantity_to_produce: quantity,
+                formulation: calculations,
+                totals: {
+                    percentage: parseFloat(totalPercentage.toFixed(2)),
+                    theoretical_quantity: parseFloat(totalTheoretical.toFixed(3)),
+                    percentage_valid: totalPercentage === 100
+                }
+            });
+        }
+    );
+});
+
+// Calculate packaging materials
+app.post('/api/batch/calculate-packaging', authenticateToken, authorizeRole(['operator', 'admin']), (req, res) => {
+    const { units } = req.body;
+
+    if (!units) {
+        return res.status(400).json({ error: 'Number of units is required' });
+    }
+
+    // Get box factor from settings
+    db.get(
+        'SELECT value FROM system_settings WHERE key = "packaging_box_factor"',
+        (err, setting) => {
+            if (err) {
+                return res.status(500).json({ error: 'Server error' });
+            }
+
+            const boxFactor = setting ? parseFloat(setting.value) : 0.02;
+            const boxQuantity = units * boxFactor;
+
+            const packaging = {
+                units: parseInt(units),
+                materials: {
+                    bottle: { quantity: units, unit: 'UNIDADES' },
+                    cap: { quantity: units, unit: 'UNIDADES' },
+                    label_front: { quantity: units, unit: 'UNIDADES' },
+                    label_back: { quantity: units, unit: 'UNIDADES' },
+                    bag: { quantity: units, unit: 'UNIDADES' },
+                    box: { quantity: parseFloat(boxQuantity.toFixed(2)), unit: 'CAJAS' }
+                },
+                total_items: units * 5 + boxQuantity
+            };
+
+            res.json(packaging);
+        }
+    );
+});
+
+// Calculate production time
+app.post('/api/batch/calculate-time', authenticateToken, (req, res) => {
+    const { startTime, endTime } = req.body;
+
+    if (!startTime || !endTime) {
+        return res.status(400).json({ error: 'Start and end times are required' });
+    }
+
+    try {
+        const start = new Date(`2000-01-01T${startTime}`);
+        const end = new Date(`2000-01-01T${endTime}`);
+
+        if (end <= start) {
+            return res.status(400).json({ error: 'End time must be after start time' });
+        }
+
+        const diffMs = end - start;
+        const diffHours = diffMs / (1000 * 60 * 60);
+
+        res.json({
+            start_time: startTime,
+            end_time: endTime,
+            hours_worked: parseFloat(diffHours.toFixed(2)),
+            minutes_worked: Math.round((diffHours * 60))
+        });
+    } catch (error) {
+        res.status(400).json({ error: 'Invalid time format' });
+    }
+});
+
+// Enhanced batch record creation with formulation
+app.post('/api/records/complete', authenticateToken, authorizeRole(['operator']), (req, res) => {
+    const {
+        batchNumber,
+        productId,
+        productName,
+        quantity,
+        productionDate,
+        formulation,
+        packaging,
+        qualityControl,
+        productionTime
+    } = req.body;
+
+    if (!batchNumber || !productId || !productName || !formulation) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const formData = {
+        productId,
+        productName,
+        quantity,
+        productionDate,
+        formulation,
+        packaging,
+        qualityControl,
+        productionTime
+    };
+
+    const formDataJson = JSON.stringify(formData);
+    const dataHash = DigitalSignature.hashData(formDataJson);
+
+    db.serialize(() => {
+        db.run('BEGIN TRANSACTION');
+
+        // Insert main record
+        db.run(
+            'INSERT INTO records (operator_id, batch_number, product_name, quantity, production_date, form_data, data_hash) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [req.user.id, batchNumber, productName, quantity, productionDate, formDataJson, dataHash],
+            function(err) {
+                if (err) {
+                    db.run('ROLLBACK');
+                    if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+                        return res.status(409).json({ error: 'Batch number already exists' });
+                    }
+                    return res.status(500).json({ error: 'Server error' });
+                }
+
+                const recordId = this.lastID;
+
+                // Insert formulation data
+                if (formulation && formulation.length > 0) {
+                    const stmt = db.prepare(
+                        'INSERT INTO batch_formulation (record_id, raw_material_id, item_number, percentage, theoretical_quantity, actual_quantity, lot_number, dispensed_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+                    );
+
+                    formulation.forEach(item => {
+                        stmt.run([
+                            recordId,
+                            item.raw_material_id,
+                            item.item_number,
+                            item.percentage,
+                            item.theoretical_quantity,
+                            item.actual_quantity || null,
+                            item.lot_number || null,
+                            item.dispensed_by || null
+                        ]);
+
+                        // Update stock if actual quantity is provided
+                        if (item.actual_quantity) {
+                            db.run(
+                                'UPDATE raw_materials SET stock = stock - ? WHERE id = ?',
+                                [item.actual_quantity, item.raw_material_id]
+                            );
+
+                            // Log stock movement
+                            db.run(
+                                'INSERT INTO stock_movements (material_type, material_id, movement_type, quantity, reference_type, reference_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                                ['RAW_MATERIAL', item.raw_material_id, 'OUT', item.actual_quantity, 'BATCH_RECORD', recordId, req.user.id]
+                            );
+                        }
+                    });
+
+                    stmt.finalize();
+                }
+
+                db.run('COMMIT', (err) => {
+                    if (err) {
+                        return res.status(500).json({ error: 'Failed to commit transaction' });
+                    }
+
+                    logAudit(req.user.id, recordId, 'batch_record_created', { batchNumber, productName }, req);
+
+                    res.status(201).json({
+                        id: recordId,
+                        batchNumber,
+                        productName,
+                        status: 'draft'
+                    });
+                });
+            }
+        );
+    });
+});
+
+// Get batch with complete data
+app.get('/api/records/:id/complete', authenticateToken, (req, res) => {
+    const recordId = req.params.id;
+
+    db.get(
+        `SELECT r.*, u1.full_name as operator_name, u2.full_name as verificador_name
+         FROM records r
+         LEFT JOIN users u1 ON r.operator_id = u1.id
+         LEFT JOIN users u2 ON r.verificador_id = u2.id
+         WHERE r.id = ?`,
+        [recordId],
+        (err, record) => {
+            if (err || !record) {
+                return res.status(404).json({ error: 'Record not found' });
+            }
+
+            // Get formulation data
+            db.all(
+                `SELECT bf.*, rm.name as raw_material_name, rm.unit
+                 FROM batch_formulation bf
+                 JOIN raw_materials rm ON bf.raw_material_id = rm.id
+                 WHERE bf.record_id = ?
+                 ORDER BY bf.item_number`,
+                [recordId],
+                (err, formulation) => {
+                    if (err) {
+                        return res.status(500).json({ error: 'Server error' });
+                    }
+
+                    res.json({
+                        ...record,
+                        form_data: JSON.parse(record.form_data),
+                        formulation: formulation || []
+                    });
+                }
+            );
+        }
+    );
+});
+
+// Notifications routes
+app.get('/api/notifications', authenticateToken, (req, res) => {
+    db.all(
+        'SELECT * FROM notifications WHERE user_id = ? OR user_id IS NULL ORDER BY created_at DESC LIMIT 50',
+        [req.user.id],
+        (err, notifications) => {
+            if (err) {
+                return res.status(500).json({ error: 'Server error' });
+            }
+            res.json(notifications);
+        }
+    );
+});
+
+app.put('/api/notifications/:id/read', authenticateToken, (req, res) => {
+    db.run(
+        'UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?',
+        [req.params.id, req.user.id],
+        (err) => {
+            if (err) {
+                return res.status(500).json({ error: 'Server error' });
+            }
+            res.json({ message: 'Notification marked as read' });
+        }
+    );
+});
+
+// Dashboard statistics
+app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
+    const stats = {};
+
+    db.serialize(() => {
+        // Total records
+        db.get(
+            'SELECT COUNT(*) as total FROM records WHERE operator_id = ?',
+            [req.user.id],
+            (err, result) => {
+                stats.totalRecords = result ? result.total : 0;
+            }
+        );
+
+        // Pending verification
+        db.get(
+            'SELECT COUNT(*) as total FROM records WHERE status = "signed"',
+            (err, result) => {
+                stats.pendingVerification = result ? result.total : 0;
+            }
+        );
+
+        // Approved records
+        db.get(
+            'SELECT COUNT(*) as total FROM records WHERE status = "approved"',
+            (err, result) => {
+                stats.approvedRecords = result ? result.total : 0;
+                res.json(stats);
+            }
+        );
+    });
+});
+
+// Low stock alerts
+app.get('/api/alerts/low-stock', authenticateToken, authorizeRole(['admin', 'operator']), (req, res) => {
+    db.all(
+        'SELECT * FROM raw_materials WHERE stock <= min_stock AND is_active = 1',
+        (err, materials) => {
+            if (err) {
+                return res.status(500).json({ error: 'Server error' });
+            }
+            res.json(materials);
+        }
+    );
+});
+
 // Serve the frontend
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/index.html'));

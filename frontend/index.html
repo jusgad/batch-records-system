@@ -225,8 +225,94 @@
                         </div>
                         
                         <div class="form-container">
-                            <!-- This will contain the adapted MARIPOSA form -->
-                            <div id="batch-form-container"></div>
+                            <form id="batch-record-form">
+                                <!-- Basic Information -->
+                                <div class="form-section">
+                                    <h3>Información Básica</h3>
+                                    <div class="form-row">
+                                        <div class="form-group col-md-4">
+                                            <label for="batch-number">Número de Lote *</label>
+                                            <input type="text" class="form-control" id="batch-number" required>
+                                        </div>
+                                        <div class="form-group col-md-4">
+                                            <label for="production-date">Fecha de Producción *</label>
+                                            <input type="date" class="form-control" id="production-date" required>
+                                        </div>
+                                        <div class="form-group col-md-4">
+                                            <label for="product-select">Producto *</label>
+                                            <select class="form-control" id="product-select" required>
+                                                <option value="">Seleccione un producto...</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group col-md-6">
+                                            <label>Producto Seleccionado:</label>
+                                            <p id="product-name-display" class="form-control-plaintext"><em>Ninguno</em></p>
+                                        </div>
+                                        <div class="form-group col-md-6">
+                                            <label>Presentación:</label>
+                                            <p id="product-presentation" class="form-control-plaintext"><em>-</em></p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Production Quantity -->
+                                <div class="form-section">
+                                    <h3>Cantidad a Producir</h3>
+                                    <div class="form-row">
+                                        <div class="form-group col-md-6">
+                                            <label for="quantity-to-produce">Cantidad Total *</label>
+                                            <input type="number" class="form-control" id="quantity-to-produce" step="0.01" min="0.01" required>
+                                        </div>
+                                        <div class="form-group col-md-6">
+                                            <label>&nbsp;</label>
+                                            <button type="button" class="btn btn-primary btn-block" id="calculate-materials-btn">
+                                                <i class="fas fa-calculator"></i> Calcular Materiales
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Formulation Table -->
+                                <div class="form-section">
+                                    <h3>Formulación</h3>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered formulation-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>ITEM</th>
+                                                    <th>MATERIA PRIMA</th>
+                                                    <th>%</th>
+                                                    <th>CANTIDAD TEÓRICA</th>
+                                                    <th>CANTIDAD REAL</th>
+                                                    <th>LOTE MP</th>
+                                                    <th>DISPENSADO POR</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="formulation-tbody">
+                                                <tr>
+                                                    <td colspan="7" class="text-center text-muted">
+                                                        Seleccione un producto y calcule materiales
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                            <tfoot id="formulation-tfoot">
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Form Actions -->
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-secondary" onclick="showRecordsList()">
+                                        <i class="fas fa-times"></i> Cancelar
+                                    </button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> Guardar Batch Record
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
 
@@ -291,6 +377,8 @@
     <script src="js/dashboard.js"></script>
     <script src="js/records.js"></script>
     <script src="js/admin.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/batch-form.js"></script>
     <script src="js/form-handler.js"></script>
     <script src="js/app.js"></script>
 </body>
