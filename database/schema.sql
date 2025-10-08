@@ -248,6 +248,46 @@ CREATE TABLE stock_movements (
     FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
+-- External database connections configuration
+CREATE TABLE external_db_connections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(100) NOT NULL,
+    db_type VARCHAR(20) NOT NULL, -- mysql, postgres, sqlite, mssql
+    host VARCHAR(255),
+    port INTEGER,
+    database_name VARCHAR(100),
+    username VARCHAR(100),
+    password_encrypted TEXT,
+    file_path VARCHAR(500), -- For SQLite
+    tables_config TEXT, -- JSON con configuración de tablas
+    field_mappings TEXT, -- JSON con mapeo de campos
+    is_active BOOLEAN DEFAULT 1,
+    last_sync TIMESTAMP,
+    created_by INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+-- Sync history table
+CREATE TABLE sync_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    connection_id INTEGER NOT NULL,
+    sync_type VARCHAR(50) NOT NULL, -- PRODUCTS, INGREDIENTS, FULL
+    status VARCHAR(20) NOT NULL, -- SUCCESS, PARTIAL, FAILED
+    records_processed INTEGER DEFAULT 0,
+    records_imported INTEGER DEFAULT 0,
+    records_updated INTEGER DEFAULT 0,
+    errors_count INTEGER DEFAULT 0,
+    error_details TEXT, -- JSON con detalles de errores
+    sync_details TEXT, -- JSON con detalles de la sincronización
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP,
+    executed_by INTEGER,
+    FOREIGN KEY (connection_id) REFERENCES external_db_connections(id) ON DELETE CASCADE,
+    FOREIGN KEY (executed_by) REFERENCES users(id)
+);
+
 -- Notifications table
 CREATE TABLE notifications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -270,6 +310,9 @@ CREATE INDEX idx_quality_control_record ON batch_quality_control(record_id);
 CREATE INDEX idx_production_time_record ON batch_production_time(record_id);
 CREATE INDEX idx_stock_movements_material ON stock_movements(material_type, material_id);
 CREATE INDEX idx_notifications_user ON notifications(user_id, is_read);
+CREATE INDEX idx_external_db_connections_active ON external_db_connections(is_active);
+CREATE INDEX idx_sync_history_connection ON sync_history(connection_id);
+CREATE INDEX idx_sync_history_status ON sync_history(status);
 
 -- Initial system settings
 INSERT INTO system_settings (key, value, description) VALUES

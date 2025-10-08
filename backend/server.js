@@ -9,6 +9,8 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
+const SyncService = require('./sync-service');
+const DatabaseConnector = require('./db-connector');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -975,6 +977,342 @@ app.get('/api/alerts/low-stock', authenticateToken, authorizeRole(['admin', 'ope
             res.json(materials);
         }
     );
+});
+
+// ============ External Database Sync Routes ============
+
+// Get all external database connections
+app.get('/api/external-db/connections', authenticateToken, authorizeRole(['admin']), (req, res) => {
+    db.all(
+        `SELECT id, name, db_type, host, port, database_name, username, is_active, last_sync, created_at
+         FROM external_db_connections
+         ORDER BY created_at DESC`,
+        (err, connections) => {
+            if (err) {
+                return res.status(500).json({ error: 'Server error' });
+            }
+            res.json(connections);
+        }
+    );
+});
+
+// Get a specific connection
+app.get('/api/external-db/connections/:id', authenticateToken, authorizeRole(['admin']), (req, res) => {
+    db.get(
+        `SELECT * FROM external_db_connections WHERE id = ?`,
+        [req.params.id],
+        (err, connection) => {
+            if (err || !connection) {
+                return res.status(404).json({ error: 'Connection not found' });
+            }
+
+            // Parse JSON fields
+            connection.tables_config = connection.tables_config ? JSON.parse(connection.tables_config) : {};
+            connection.field_mappings = connection.field_mappings ? JSON.parse(connection.field_mappings) : {};
+
+            res.json(connection);
+        }
+    );
+});
+
+// Create new external database connection
+app.post('/api/external-db/connections', authenticateToken, authorizeRole(['admin']), (req, res) => {
+    const {
+        name,
+        db_type,
+        host,
+        port,
+        database_name,
+        username,
+        password,
+        file_path,
+        tables_config,
+        field_mappings
+    } = req.body;
+
+    if (!name || !db_type) {
+        return res.status(400).json({ error: 'Name and database type are required' });
+    }
+
+    // Encrypt password (simple encryption - en producción usar crypto más robusto)
+    const passwordEncrypted = password ?
+        crypto.createHash('sha256').update(password).digest('hex') : null;
+
+    db.run(
+        `INSERT INTO external_db_connections
+         (name, db_type, host, port, database_name, username, password_encrypted, file_path, tables_config, field_mappings, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+            name,
+            db_type,
+            host,
+            port,
+            database_name,
+            username,
+            passwordEncrypted,
+            file_path,
+            JSON.stringify(tables_config || {}),
+            JSON.stringify(field_mappings || {}),
+            req.user.id
+        ],
+        function(err) {
+            if (err) {
+                console.error('Error creating connection:', err);
+                return res.status(500).json({ error: 'Failed to create connection' });
+            }
+
+            logAudit(req.user.id, null, 'external_db_created', { connectionId: this.lastID, name }, req);
+
+            res.status(201).json({
+                id: this.lastID,
+                name,
+                db_type,
+                message: 'Connection created successfully'
+            });
+        }
+    );
+});
+
+// Update external database connection
+app.put('/api/external-db/connections/:id', authenticateToken, authorizeRole(['admin']), (req, res) => {
+    const {
+        name,
+        host,
+        port,
+        database_name,
+        username,
+        password,
+        file_path,
+        tables_config,
+        field_mappings,
+        is_active
+    } = req.body;
+
+    let updateQuery = `UPDATE external_db_connections SET
+        name = ?, host = ?, port = ?, database_name = ?, username = ?,
+        file_path = ?, tables_config = ?, field_mappings = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP`;
+
+    let params = [
+        name,
+        host,
+        port,
+        database_name,
+        username,
+        file_path,
+        JSON.stringify(tables_config || {}),
+        JSON.stringify(field_mappings || {}),
+        is_active !== undefined ? is_active : 1
+    ];
+
+    if (password) {
+        updateQuery += `, password_encrypted = ?`;
+        params.push(crypto.createHash('sha256').update(password).digest('hex'));
+    }
+
+    updateQuery += ` WHERE id = ?`;
+    params.push(req.params.id);
+
+    db.run(updateQuery, params, function(err) {
+        if (err) {
+            console.error('Error updating connection:', err);
+            return res.status(500).json({ error: 'Failed to update connection' });
+        }
+
+        if (this.changes === 0) {
+            return res.status(404).json({ error: 'Connection not found' });
+        }
+
+        logAudit(req.user.id, null, 'external_db_updated', { connectionId: req.params.id }, req);
+        res.json({ message: 'Connection updated successfully' });
+    });
+});
+
+// Delete external database connection
+app.delete('/api/external-db/connections/:id', authenticateToken, authorizeRole(['admin']), (req, res) => {
+    db.run(
+        'DELETE FROM external_db_connections WHERE id = ?',
+        [req.params.id],
+        function(err) {
+            if (err) {
+                return res.status(500).json({ error: 'Server error' });
+            }
+
+            if (this.changes === 0) {
+                return res.status(404).json({ error: 'Connection not found' });
+            }
+
+            logAudit(req.user.id, null, 'external_db_deleted', { connectionId: req.params.id }, req);
+            res.json({ message: 'Connection deleted successfully' });
+        }
+    );
+});
+
+// Test external database connection
+app.post('/api/external-db/test-connection', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+    const { db_type, host, port, database_name, username, password, file_path } = req.body;
+
+    try {
+        const config = {
+            type: db_type,
+            host,
+            port,
+            database: database_name,
+            user: username,
+            password,
+            path: file_path
+        };
+
+        const connector = new DatabaseConnector(config);
+        const result = await connector.testConnection();
+
+        res.json(result);
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+});
+
+// Sync products from external database
+app.post('/api/external-db/sync/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+    const connectionId = req.params.id;
+
+    try {
+        // Get connection config
+        db.get(
+            'SELECT * FROM external_db_connections WHERE id = ? AND is_active = 1',
+            [connectionId],
+            async (err, connection) => {
+                if (err || !connection) {
+                    return res.status(404).json({ error: 'Connection not found or inactive' });
+                }
+
+                // Create sync history record
+                db.run(
+                    `INSERT INTO sync_history (connection_id, sync_type, status, executed_by)
+                     VALUES (?, 'FULL', 'RUNNING', ?)`,
+                    [connectionId, req.user.id],
+                    async function(err) {
+                        if (err) {
+                            return res.status(500).json({ error: 'Failed to create sync record' });
+                        }
+
+                        const syncHistoryId = this.lastID;
+
+                        try {
+                            // Prepare config
+                            const syncConfig = {
+                                connection: {
+                                    type: connection.db_type,
+                                    host: connection.host,
+                                    port: connection.port,
+                                    database: connection.database_name,
+                                    user: connection.username,
+                                    password: connection.password, // En producción, descifrar
+                                    path: connection.file_path
+                                },
+                                tables: JSON.parse(connection.tables_config || '{}'),
+                                fieldMappings: JSON.parse(connection.field_mappings || '{}')
+                            };
+
+                            // Execute sync
+                            const syncService = new SyncService(path.join(__dirname, '../database/batch_records.db'));
+                            const results = await syncService.syncProducts(syncConfig, req.user.id);
+                            await syncService.close();
+
+                            // Update sync history
+                            db.run(
+                                `UPDATE sync_history SET
+                                 status = ?,
+                                 records_imported = ?,
+                                 records_updated = ?,
+                                 errors_count = ?,
+                                 error_details = ?,
+                                 sync_details = ?,
+                                 completed_at = CURRENT_TIMESTAMP
+                                 WHERE id = ?`,
+                                [
+                                    results.success ? 'SUCCESS' : (results.errors.length > 0 ? 'PARTIAL' : 'FAILED'),
+                                    results.productsImported,
+                                    results.details.filter(d => d.action === 'updated').length,
+                                    results.errors.length,
+                                    JSON.stringify(results.errors),
+                                    JSON.stringify(results.details),
+                                    syncHistoryId
+                                ]
+                            );
+
+                            // Update last_sync in connection
+                            db.run(
+                                'UPDATE external_db_connections SET last_sync = CURRENT_TIMESTAMP WHERE id = ?',
+                                [connectionId]
+                            );
+
+                            logAudit(req.user.id, null, 'external_db_sync', {
+                                connectionId,
+                                productsImported: results.productsImported,
+                                ingredientsImported: results.ingredientsImported
+                            }, req);
+
+                            res.json(results);
+
+                        } catch (error) {
+                            // Update sync history with error
+                            db.run(
+                                `UPDATE sync_history SET
+                                 status = 'FAILED',
+                                 error_details = ?,
+                                 completed_at = CURRENT_TIMESTAMP
+                                 WHERE id = ?`,
+                                [JSON.stringify([{ error: error.message }]), syncHistoryId]
+                            );
+
+                            res.status(500).json({
+                                success: false,
+                                error: error.message
+                            });
+                        }
+                    }
+                );
+            }
+        );
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get sync history
+app.get('/api/external-db/sync-history', authenticateToken, authorizeRole(['admin']), (req, res) => {
+    const { connection_id } = req.query;
+
+    let query = `
+        SELECT sh.*, edb.name as connection_name, u.full_name as executed_by_name
+        FROM sync_history sh
+        LEFT JOIN external_db_connections edb ON sh.connection_id = edb.id
+        LEFT JOIN users u ON sh.executed_by = u.id
+    `;
+
+    let params = [];
+
+    if (connection_id) {
+        query += ' WHERE sh.connection_id = ?';
+        params.push(connection_id);
+    }
+
+    query += ' ORDER BY sh.started_at DESC LIMIT 50';
+
+    db.all(query, params, (err, history) => {
+        if (err) {
+            return res.status(500).json({ error: 'Server error' });
+        }
+
+        // Parse JSON fields
+        const parsedHistory = history.map(h => ({
+            ...h,
+            error_details: h.error_details ? JSON.parse(h.error_details) : [],
+            sync_details: h.sync_details ? JSON.parse(h.sync_details) : []
+        }));
+
+        res.json(parsedHistory);
+    });
 });
 
 // Serve the frontend
