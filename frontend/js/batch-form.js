@@ -319,4 +319,12 @@ let batchFormHandler;
 document.addEventListener('DOMContentLoaded', () => {
     batchFormHandler = new BatchFormHandler();
     batchFormHandler.initialize();
+
+    // Initialize signature upload functionality after a short delay
+    // to ensure signatureManager is loaded
+    setTimeout(() => {
+        if (signatureManager) {
+            signatureManager.setupSignatureUploads();
+        }
+    }, 500);
 });

@@ -7,9 +7,10 @@
     left: 0;
     right: 0;
     height: var(--navbar-height);
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-    box-shadow: var(--box-shadow);
+    background: linear-gradient(135deg, var(--header-bg), var(--darker-color));
+    box-shadow: var(--box-shadow-lg);
     z-index: 1000;
+    border-bottom: 3px solid var(--primary-color);
 }
 
 .nav-container {
@@ -173,9 +174,10 @@
 }
 
 .menu-item.active {
-    background-color: rgba(0, 123, 255, 0.1);
+    background: linear-gradient(90deg, rgba(74, 144, 226, 0.15), rgba(74, 144, 226, 0.05));
     color: var(--primary-color);
-    border-left: 3px solid var(--primary-color);
+    border-left: 4px solid var(--primary-color);
+    font-weight: 600;
 }
 
 .menu-item i {

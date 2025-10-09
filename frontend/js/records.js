@@ -57,19 +57,19 @@ class RecordsManager {
     }
 
     renderRecordRow(record) {
-        const canEdit = authManager.hasRole('admin') || 
+        const canEdit = authManager.hasRole('admin') ||
                        (authManager.hasRole('operator') && record.operator_id === authManager.currentUser.id && record.status === 'draft');
-        
-        const canSign = authManager.hasRole('operator') && 
-                       record.operator_id === authManager.currentUser.id && 
+
+        const canSign = authManager.hasRole('operator') &&
+                       record.operator_id === authManager.currentUser.id &&
                        record.status === 'draft';
-        
+
         const canVerify = authManager.hasRole('verificador') && record.status === 'signed';
-        
+
         const canDelete = authManager.hasRole('admin');
 
         return `
-            <tr data-record-id="${record.id}">
+            <tr data-record-id="${record.id}" class="interactive-row">
                 <td>
                     <strong>${record.batch_number}</strong>
                 </td>
@@ -87,6 +87,9 @@ class RecordsManager {
                     <div class="action-buttons">
                         <button class="btn btn-sm btn-outline-primary" onclick="recordsManager.viewRecord(${record.id})" title="Ver detalles">
                             <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="recordsManager.exportToPDF(${record.id})" title="Exportar PDF">
+                            <i class="fas fa-file-pdf"></i>
                         </button>
                         ${canEdit ? `
                             <button class="btn btn-sm btn-outline-secondary" onclick="recordsManager.editRecord(${record.id})" title="Editar">
@@ -495,6 +498,68 @@ class RecordsManager {
         } catch (error) {
             showErrorMessage('Error al exportar registros');
             console.error('Export error:', error);
+        }
+    }
+
+    async exportToPDF(recordId) {
+        const record = this.records.find(r => r.id === recordId);
+        if (!record) {
+            showErrorMessage('Registro no encontrado');
+            return;
+        }
+
+        try {
+            showLoading('Generando PDF...');
+
+            // Get formulation data
+            let formulation = [];
+            try {
+                formulation = await api.getRecordFormulation(recordId);
+            } catch (error) {
+                console.warn('No formulation data available:', error);
+            }
+
+            // Get signatures from signature manager
+            const signatures = signatureManager ? signatureManager.getSignaturesForSubmission() : {};
+
+            // Generate PDF
+            if (pdfExporter) {
+                await pdfExporter.generateBatchRecordPDF(record, formulation, signatures);
+                showSuccessMessage('PDF generado exitosamente');
+            } else {
+                throw new Error('PDF Exporter no está disponible');
+            }
+
+            hideLoading();
+        } catch (error) {
+            hideLoading();
+            showErrorMessage('Error al generar PDF: ' + error.message);
+            console.error('PDF export error:', error);
+        }
+    }
+
+    async exportMultipleToPDF(recordIds) {
+        try {
+            showLoading('Generando PDF de múltiples registros...');
+
+            const recordsToExport = this.records.filter(r => recordIds.includes(r.id));
+
+            if (recordsToExport.length === 0) {
+                throw new Error('No se encontraron registros para exportar');
+            }
+
+            if (pdfExporter) {
+                await pdfExporter.generateMultipleRecordsPDF(recordsToExport);
+                showSuccessMessage(`PDF generado con ${recordsToExport.length} registros`);
+            } else {
+                throw new Error('PDF Exporter no está disponible');
+            }
+
+            hideLoading();
+        } catch (error) {
+            hideLoading();
+            showErrorMessage('Error al generar PDF: ' + error.message);
+            console.error('Multiple PDF export error:', error);
         }
     }
 }
